@@ -119,7 +119,7 @@ export const translations = {
     lp_nav_reviews: "Avaliações",
     lp_nav_support: "Suporte",
     lp_hero_badge: "Plataforma de Alta Performance",
-    lp_hero_title_1: "Aprove de Primeira no Concurso ",
+    lp_hero_title_1: "Aprove de Primeira no Concurso! ",
     lp_hero_desc: "Nossa plataforma não é apenas um simulador estático. É um simulador dinâmico de alta performance alimentado por questões reais e categorizadas, gamificação e métricas oficiais que imitam o ambiente real da prova.",
     lp_feat_1: "300 Questões Focadas",
     lp_feat_2: "Dashboard Analytics M365",

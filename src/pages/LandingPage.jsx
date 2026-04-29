@@ -106,7 +106,7 @@ export default function LandingPage() {
                 <Zap size={14} className="text-amber-500" fill="currentColor" /> {t('lp_hero_badge', 'Plataforma de Alta Performance')}
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-[1.15] mb-6 text-slate-900 tracking-tight">
-              {t('lp_hero_title_1', 'Aprove de Primeira no Concurso ')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-yellow-500">Petrobras 2026</span>
+              {t('lp_hero_title_1', 'Aprove de Primeira no Concurso! ')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-yellow-500">Petrobras 2026</span>
             </h1>
             <p className="text-lg md:text-xl text-slate-600 mb-10 leading-relaxed font-medium max-w-2xl">
               {t('lp_hero_desc')}
