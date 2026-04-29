@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
+// Build trigger: Environment variables update
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
