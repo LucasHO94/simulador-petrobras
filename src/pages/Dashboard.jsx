@@ -2,7 +2,6 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Target, Flame, Trophy, Play, LogOut, Check, X, Medal, Star, Award, TrendingUp, Settings, User, PieChart, AlertCircle, Shield, Clock, Sun, Users, ChevronRight, Mail, Zap, ListChecks } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { generateCertificate } from '../utils/certificate';
 import SupportModal from '../components/SupportModal';
 import { LanguageContext } from '../contexts/LanguageContext';
@@ -10,44 +9,6 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 import KPICards from '../components/KPICards';
 import TopicProgress from '../components/TopicProgress';
 
-const RenderCustomTick = ({ payload, x, y, textAnchor, stroke, radius }) => {
-  if (!payload || !payload.value) return null;
-  const words = payload.value.split(' ');
-  const lines = [];
-  let currentLine = '';
-
-  words.forEach(word => {
-    if ((currentLine + word).length > 15 && currentLine.length > 0) {
-      lines.push(currentLine.trim());
-      currentLine = word + ' ';
-    } else {
-      currentLine += word + ' ';
-    }
-  });
-  if (currentLine.trim().length > 0) {
-      lines.push(currentLine.trim());
-  }
-
-  return (
-    <g transform={`translate(${x},${y})`}>
-      <text
-        x={0}
-        y={0}
-        dy={4}
-        textAnchor={textAnchor}
-        fill="#64748b"
-        fontSize={8}
-        fontWeight={700}
-      >
-        {lines.map((line, index) => (
-          <tspan key={index} x={0} dy={index === 0 ? 0 : 9}>
-            {line}
-          </tspan>
-        ))}
-      </text>
-    </g>
-  );
-};
 
 export default function Dashboard({ session }) {
   const navigate = useNavigate();
@@ -70,6 +31,7 @@ export default function Dashboard({ session }) {
   const [supportSubject, setSupportSubject] = useState('Suporte');
   const [dailyGoal, setDailyGoal] = useState(10);
   const [rawHistory, setRawHistory] = useState([]);
+  const [showAllDomains, setShowAllDomains] = useState(false);
 
   const fetchHistory = async () => {
     if (!session?.user?.id) return;
@@ -482,35 +444,69 @@ export default function Dashboard({ session }) {
           {/* Seção de Conquistas e Gráfico de Radar */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
              
-             {/* Gráfico de Radar: Desempenho Setorial */}
+             {/* Performance por Domínio: lista de barras ordenada por pior desempenho */}
              <div className="mb-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <h3 className="font-black text-slate-800 flex items-center gap-2 text-sm mb-4 uppercase tracking-wider">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-black text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wider">
                     <PieChart className="text-green-600" size={18} /> {t('performance_domain')}
-                </h3>
-                
-                <div className="h-[250px] w-full">
-                    {radarData.length > 0 ? (
-                        <ResponsiveContainer width="100%" height={250}>
-                            <RadarChart cx="50%" cy="50%" outerRadius="55%" data={radarData}>
-                                <PolarGrid stroke="#e2e8f0" />
-                                <PolarAngleAxis dataKey="subject" tick={<RenderCustomTick />} />
-                                <Radar
-                                    name="Seu Desempenho"
-                                    dataKey="A"
-                                    stroke="#16a34a"
-                                    strokeWidth={3}
-                                    fill="#22c55e"
-                                    fillOpacity={0.5}
-                                />
-                            </RadarChart>
-                        </ResponsiveContainer>
-                    ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                            <AlertCircle size={32} className="text-slate-300 mb-2" />
-                            <p className="text-xs text-slate-400 font-bold">{t('no_radar_data')}</p>
-                        </div>
-                    )}
+                  </h3>
+                  {radarData.length > 0 && (
+                    <span className="bg-slate-200 text-slate-500 text-[10px] font-black px-2 py-1 rounded-lg">
+                      {radarData.length} temas
+                    </span>
+                  )}
                 </div>
+
+                {radarData.length > 0 ? (
+                  <div className="space-y-3">
+                    {[...radarData]
+                      .sort((a, b) => a.A - b.A)
+                      .slice(0, showAllDomains ? undefined : 7)
+                      .map((item) => {
+                        const isRed   = item.A < 50;
+                        const isAmber = item.A >= 50 && item.A < 70;
+                        return (
+                          <div key={item.subject}>
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-xs font-bold text-slate-700 truncate pr-2 max-w-[78%]" title={item.subject}>
+                                {item.subject}
+                              </span>
+                              <span className={`text-xs font-black tabular-nums ${isRed ? 'text-red-600' : isAmber ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                {item.A}%
+                              </span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${isRed ? 'bg-red-500' : isAmber ? 'bg-amber-400' : 'bg-emerald-500'}`}
+                                style={{ width: `${item.A}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    }
+
+                    {radarData.length > 7 && (
+                      <button
+                        onClick={() => setShowAllDomains(v => !v)}
+                        className="w-full mt-1 py-2 text-[11px] font-black text-slate-500 hover:text-green-700 border border-dashed border-slate-300 hover:border-green-300 hover:bg-white rounded-xl transition-all"
+                      >
+                        {showAllDomains ? 'Mostrar menos' : `Ver todos os ${radarData.length} domínios ↓`}
+                      </button>
+                    )}
+
+                    <div className="flex items-center gap-4 mt-2 pt-3 border-t border-slate-200">
+                      <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-red-500"></div><span className="text-[9px] font-bold text-slate-400 uppercase">&lt;50% Crítico</span></div>
+                      <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-amber-400"></div><span className="text-[9px] font-bold text-slate-400 uppercase">50–70% Atenção</span></div>
+                      <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></div><span className="text-[9px] font-bold text-slate-400 uppercase">≥70% Ok</span></div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-10 flex flex-col items-center justify-center text-center">
+                    <AlertCircle size={32} className="text-slate-300 mb-2" />
+                    <p className="text-xs text-slate-400 font-bold">{t('no_radar_data')}</p>
+                  </div>
+                )}
              </div>
 
              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">

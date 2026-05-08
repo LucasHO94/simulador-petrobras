@@ -157,23 +157,36 @@ export default function Admin({ session }) {
     } finally {
       setLoading(false);
     }
+  };
+
   const clearAllHistory = async () => {
-    const confirmed = window.confirm("CUIDADO: Isso apagará TODO o histórico de simulados de TODOS os usuários. Tem certeza?");
+    const confirmed = window.confirm("CUIDADO: Isso apagará TODO o seu histórico de simulados e progresso. Tem certeza?");
     if (!confirmed) return;
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      // 1. Limpar Histórico de Simulados
+      const { error: hError } = await supabase
         .from('petro_simulator_history')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+        .eq('user_id', session.user.id);
         
-      if (error) throw error;
-      alert("Histórico limpo com sucesso!");
-      fetchAdminData();
+      if (hError) throw hError;
+
+      // 2. Limpar Fila de Revisão (opcional, mas recomendado para 'clean slate')
+      try {
+        await supabase
+          .from('petro_review_queue')
+          .delete()
+          .eq('user_id', session.user.id);
+      } catch (e) { console.warn("Erro ao limpar fila de revisão:", e); }
+
+      alert("Seu histórico pessoal foi limpo com sucesso!");
+      window.location.reload();
+      
     } catch (err) {
       console.error("Erro ao limpar histórico:", err);
-      alert("Erro ao limpar histórico. Verifique as permissões de RLS.");
+      alert("Erro ao limpar histórico: " + (err.message || "Verifique sua conexão."));
     } finally {
       setLoading(false);
     }
