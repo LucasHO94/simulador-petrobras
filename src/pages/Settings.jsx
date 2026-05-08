@@ -13,6 +13,7 @@ export default function Settings() {
   const { t } = useContext(LanguageContext);
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [fontSize, setFontSize] = useState(localStorage.getItem('fontSize') || 'medium');
+  const [dailyGoal, setDailyGoal] = useState(parseInt(localStorage.getItem('petro_daily_goal') || '10'));
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -30,10 +31,15 @@ export default function Settings() {
     localStorage.setItem('fontSize', fontSize);
   }, [fontSize]);
 
+  useEffect(() => {
+    localStorage.setItem('petro_daily_goal', dailyGoal.toString());
+  }, [dailyGoal]);
+
   const handleReset = () => {
     if (window.confirm(t('reset_confirm'))) {
       setTheme('light');
       setFontSize('medium');
+      setDailyGoal(10);
     }
   };
 
@@ -121,6 +127,47 @@ export default function Settings() {
                     <p style={{ fontSize: fontSize === 'small' ? '0.8rem' : fontSize === 'large' ? '1.2rem' : '1rem' }}>
                         {t('test_view')}
                     </p>
+                </div>
+            </section>
+
+            {/* Seção de Meta Diária */}
+            <section className={`p-8 rounded-[3rem] border transition-all ${theme === 'dark' ? 'bg-slate-900 border-slate-800 shadow-2xl-blue' : 'bg-white border-slate-200 shadow-xl'}`}>
+                <div className="flex items-center gap-4 mb-8">
+                    <div className={`p-3 rounded-2xl ${theme === 'dark' ? 'bg-white/10 text-green-400' : 'bg-green-50 text-green-600'}`}>
+                        <Bell size={24} />
+                    </div>
+                    <div>
+                        <h2 className="font-black text-xl">Meta Diária de Questões</h2>
+                        <p className={`text-sm font-bold ${theme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
+                            Quantas questões você quer responder por dia?
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex bg-slate-100 p-2 rounded-2xl gap-2">
+                    {[10, 15, 20].map((goal) => (
+                        <button
+                            key={goal}
+                            onClick={() => setDailyGoal(goal)}
+                            className={`flex-1 py-4 rounded-xl font-black text-sm transition-all flex flex-col items-center gap-1
+                              ${dailyGoal === goal
+                                ? 'bg-white shadow-md text-green-600'
+                                : `${theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-slate-400 hover:text-slate-600'}`
+                              }`}
+                        >
+                            <span className="text-2xl font-black">{goal}</span>
+                            <span className="text-[10px] uppercase tracking-widest">
+                                {goal === 10 ? 'Padrão' : goal === 15 ? 'Focado' : 'Intensivo'}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className={`mt-4 p-4 rounded-2xl border border-dashed text-center text-sm font-medium ${theme === 'dark' ? 'border-slate-700 text-slate-400' : 'border-slate-300 text-slate-500'}`}>
+                    Meta atual: <span className="font-black text-green-600">{dailyGoal} questões/dia</span>
+                    {dailyGoal === 10 && ' — Ótimo para estudo regular'}
+                    {dailyGoal === 15 && ' — Para candidatos focados'}
+                    {dailyGoal === 20 && ' — Modo intensivo pré-prova'}
                 </div>
             </section>
 

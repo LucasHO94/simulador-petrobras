@@ -1,9 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-/**
- * Hook Central do Simulador Petrobras
- * Gerencia cronômetro persistente, navegação e lógica de correção Cesgranrio.
- */
 export const useSimulado = (initialQuestions, mode, totalTimeSeconds) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -12,30 +8,36 @@ export const useSimulado = (initialQuestions, mode, totalTimeSeconds) => {
   const [isFinished, setIsFinished] = useState(false);
   const timerRef = useRef(null);
 
-  const storageKey = `petro_simulado_timer_${mode}`;
+  // handleFinish deve ser declarada ANTES do useEffect que a usa
+  const handleFinish = useCallback(() => {
+    setIsFinished(true);
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
 
-  // Inicializar cronômetro
+  // Reinicia cronômetro quando o modo ou tempo total muda
   useEffect(() => {
     setTimeLeft(totalTimeSeconds);
   }, [mode, totalTimeSeconds, isFinished]);
 
-  // Lógica do Cronômetro
+  // Lógica do Cronômetro — não inicia se ainda não há questões carregadas
   useEffect(() => {
-    if (timeLeft <= 0 && initialQuestions.length > 0) {
-      handleFinish();
-      return;
-    }
-
-    if (!isPaused && !isFinished) {
+    if (!isPaused && !isFinished && initialQuestions.length > 0) {
       timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current);
+            handleFinish();
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
     }
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPaused, isFinished, timeLeft]);
+  }, [isPaused, isFinished, handleFinish, initialQuestions.length]);
 
   const handleAnswer = useCallback((questionId, optionId) => {
     if (isFinished) return;
@@ -56,11 +58,6 @@ export const useSimulado = (initialQuestions, mode, totalTimeSeconds) => {
       setCurrentQuestionIndex(prev => prev - 1);
     }
   }, [currentQuestionIndex]);
-
-  const handleFinish = useCallback(() => {
-    setIsFinished(true);
-    if (timerRef.current) clearInterval(timerRef.current);
-  }, []);
 
   const goToQuestion = useCallback((index) => {
     if (index >= 0 && index < initialQuestions.length) {
@@ -95,7 +92,7 @@ export const useSimulado = (initialQuestions, mode, totalTimeSeconds) => {
       correct,
       total: initialQuestions.length,
       percentage: Math.round((correct / initialQuestions.length) * 100),
-      score: Math.round((correct / initialQuestions.length) * 1000) // Escala Petrobras 0-1000
+      score: Math.round((correct / initialQuestions.length) * 1000),
     };
   }, [initialQuestions, answers]);
 

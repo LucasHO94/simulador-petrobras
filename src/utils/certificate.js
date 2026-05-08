@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 
-export const generateCertificate = (userName, score, date) => {
+export const generateCertificate = (userName, score, date, cargo = "Analista de Sistemas") => {
   const doc = new jsPDF({
     orientation: "landscape",
     unit: "mm",
@@ -10,70 +10,105 @@ export const generateCertificate = (userName, score, date) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // Background Sóbrio (Bordas)
-  doc.setDrawColor(30, 41, 59); // Slate-800
-  doc.setLineWidth(1.5);
-  doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
-  
-  doc.setDrawColor(59, 130, 246); // Blue-500
-  doc.setLineWidth(0.5);
-  doc.rect(7, 7, pageWidth - 14, pageHeight - 14);
+  // Fundo com gradiente simulado (faixas sutis)
+  doc.setFillColor(248, 250, 252); // slate-50
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
 
-  // Logo / Cabeçalho
+  // Bordas duplas premium
+  doc.setDrawColor(22, 163, 74); // green-600
+  doc.setLineWidth(2);
+  doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
+
+  doc.setDrawColor(30, 41, 59); // slate-800
+  doc.setLineWidth(0.5);
+  doc.rect(8, 8, pageWidth - 16, pageHeight - 16);
+
+  // Tarja verde do topo
+  doc.setFillColor(22, 163, 74);
+  doc.rect(5, 5, pageWidth - 10, 14, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("SIMULADO PETROBRAS 2026 — PADRÃO CESGRANRIO", pageWidth / 2, 13, { align: "center" });
+
+  // Cabeçalho Principal
   doc.setTextColor(30, 41, 59);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(28);
-  doc.text("CERTIFICADO DE APROVAÇÃO", pageWidth / 2, 40, { align: "center" });
+  doc.setFontSize(30);
+  doc.text("CERTIFICADO DE APROVAÇÃO", pageWidth / 2, 42, { align: "center" });
 
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setFont("helvetica", "normal");
-  doc.text("Concedido pela Plataforma PL-200 Premium SaaS", pageWidth / 2, 50, { align: "center" });
+  doc.setTextColor(100, 116, 139); // slate-500
+  doc.text("Plataforma Oficial de Preparação para o Concurso Petrobras", pageWidth / 2, 52, { align: "center" });
+
+  // Linha divisória
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.5);
+  doc.line(30, 58, pageWidth - 30, 58);
 
   // Corpo
-  doc.setFontSize(18);
-  doc.text("Certificamos que", pageWidth / 2, 75, { align: "center" });
+  doc.setTextColor(71, 85, 105); // slate-600
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(16);
+  doc.text("Certificamos que o(a) candidato(a)", pageWidth / 2, 72, { align: "center" });
 
+  // Nome em destaque
   doc.setFontSize(36);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(59, 130, 246);
-  doc.text(userName.toUpperCase(), pageWidth / 2, 95, { align: "center" });
+  doc.setTextColor(22, 163, 74); // green-600
+  doc.text(userName.toUpperCase(), pageWidth / 2, 90, { align: "center" });
 
   doc.setTextColor(30, 41, 59);
-  doc.setFontSize(16);
-  doc.setFont("helvetica", "normal");
-  doc.text("concluiu com êxito o Simulado Avançado (Modo Prova Real), atingindo o índice de", pageWidth / 2, 115, { align: "center" });
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text(`${score}% DE APROVEITAMENTO`, pageWidth / 2, 130, { align: "center" });
-
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(14);
-  doc.text("demonstrando proficiência nos domínios oficiais da certificação Microsoft PL-200:", pageWidth / 2, 145, { align: "center" });
-  
+  doc.setFont("helvetica", "normal");
+  doc.text("concluiu com êxito o Simulado Avançado — Modo Prova Real, atingindo", pageWidth / 2, 106, { align: "center" });
+
+  // Pontuação em destaque
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(26);
+  doc.setTextColor(22, 163, 74);
+  doc.text(`${score}% DE APROVEITAMENTO`, pageWidth / 2, 120, { align: "center" });
+
+  // Ênfase
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Ênfase: ${cargo}`, pageWidth / 2, 133, { align: "center" });
+
   doc.setFontSize(11);
-  doc.text("Dataverse • Power Apps • Power Automate • Power BI • Power Pages • Copilot Studio", pageWidth / 2, 155, { align: "center" });
+  doc.setTextColor(100, 116, 139);
+  doc.text("Língua Portuguesa • Língua Inglesa • Conhecimentos Específicos da Ênfase", pageWidth / 2, 143, { align: "center" });
+
+  // Linha divisória inferior
+  doc.setDrawColor(226, 232, 240);
+  doc.line(30, 152, pageWidth - 30, 152);
 
   // Rodapé
-  doc.setFontSize(12);
-  doc.text(`Emitido em: ${date}`, 30, pageHeight - 30);
-  
-  // Selo de Autenticidade (Simulado)
-  doc.setDrawColor(59, 130, 246);
-  doc.setFillColor(59, 130, 246);
-  doc.circle(pageWidth - 50, pageHeight - 40, 15, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(8);
-  doc.text("VERIFICADO", pageWidth - 50, pageHeight - 42, { align: "center" });
-  doc.text("PL-200", pageWidth - 50, pageHeight - 38, { align: "center" });
-  doc.text("PREMIUM", pageWidth - 50, pageHeight - 34, { align: "center" });
+  doc.setFontSize(11);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Emitido em: ${date}`, 30, pageHeight - 22);
 
-  // Assinatura
-  doc.setTextColor(30, 41, 59);
+  // Assinatura central
   doc.setDrawColor(30, 41, 59);
-  doc.line(pageWidth / 2 - 30, pageHeight - 35, pageWidth / 2 + 30, pageHeight - 35);
+  doc.line(pageWidth / 2 - 35, pageHeight - 28, pageWidth / 2 + 35, pageHeight - 28);
   doc.setFontSize(10);
-  doc.text("Diretoria de Educação Tecnológica", pageWidth / 2, pageHeight - 30, { align: "center" });
+  doc.setFont("helvetica", "bold");
+  doc.text("Plataforma Simulado Petrobras 2026", pageWidth / 2, pageHeight - 22, { align: "center" });
 
-  doc.save(`Certificado_PL200_${userName.replace(/\s/g, "_")}.pdf`);
+  // Selo de autenticidade
+  doc.setFillColor(22, 163, 74);
+  doc.circle(pageWidth - 38, pageHeight - 35, 16, "F");
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(1);
+  doc.circle(pageWidth - 38, pageHeight - 35, 13);
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.text("APROVADO", pageWidth - 38, pageHeight - 38, { align: "center" });
+  doc.text("PETROBRAS", pageWidth - 38, pageHeight - 33.5, { align: "center" });
+  doc.text("2026", pageWidth - 38, pageHeight - 29, { align: "center" });
+
+  doc.save(`Certificado_Petrobras_${userName.replace(/\s/g, "_")}.pdf`);
 };

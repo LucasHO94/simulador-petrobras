@@ -157,6 +157,26 @@ export default function Admin({ session }) {
     } finally {
       setLoading(false);
     }
+  const clearAllHistory = async () => {
+    const confirmed = window.confirm("CUIDADO: Isso apagará TODO o histórico de simulados de TODOS os usuários. Tem certeza?");
+    if (!confirmed) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('petro_simulator_history')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+        
+      if (error) throw error;
+      alert("Histórico limpo com sucesso!");
+      fetchAdminData();
+    } catch (err) {
+      console.error("Erro ao limpar histórico:", err);
+      alert("Erro ao limpar histórico. Verifique as permissões de RLS.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -229,7 +249,15 @@ export default function Admin({ session }) {
           <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
             <div className="p-8 border-b border-slate-100 flex justify-between items-center">
               <h2 className="font-black text-2xl text-slate-800">{t('community_petrobras', 'Comunidade Petrobras')}</h2>
-              <button onClick={fetchAdminData} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition-colors">{t('update_data')}</button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={clearAllHistory} 
+                  className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-600 font-bold rounded-xl text-sm transition-colors flex items-center gap-2"
+                >
+                  <Trash2 size={16} /> Limpar Todo Histórico
+                </button>
+                <button onClick={fetchAdminData} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition-colors">{t('update_data')}</button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">

@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Target, Flame, Trophy, Play, LogOut, Check, X, Medal, Star, Award, TrendingUp, Settings, User, PieChart, AlertCircle, Shield, Clock, Sun, Users, ChevronRight, Mail, Zap } from 'lucide-react';
+import { BookOpen, Target, Flame, Trophy, Play, LogOut, Check, X, Medal, Star, Award, TrendingUp, Settings, User, PieChart, AlertCircle, Shield, Clock, Sun, Users, ChevronRight, Mail, Zap, ListChecks } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { generateCertificate } from '../utils/certificate';
 import SupportModal from '../components/SupportModal';
 import { LanguageContext } from '../contexts/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import KPICards from '../components/KPICards';
+import TopicProgress from '../components/TopicProgress';
 
 const RenderCustomTick = ({ payload, x, y, textAnchor, stroke, radius }) => {
   if (!payload || !payload.value) return null;
@@ -61,12 +63,13 @@ export default function Dashboard({ session }) {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [radarData, setRadarData] = useState([]);
   const [profile, setProfile] = useState(null);
-  const [showModeSelector, setShowModeSelector] = useState(false);
   const [ranking, setRanking] = useState([]);
   const [loadingRanking, setLoadingRanking] = useState(true);
   const [showCertificatesModal, setShowCertificatesModal] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [supportSubject, setSupportSubject] = useState('Suporte');
+  const [dailyGoal, setDailyGoal] = useState(10);
+  const [rawHistory, setRawHistory] = useState([]);
 
   const fetchHistory = async () => {
     if (!session?.user?.id) return;
@@ -80,6 +83,7 @@ export default function Dashboard({ session }) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      setRawHistory(data || []);
       
       // Map dos tipos para nomes amigáveis
       const mappedData = data.map(h => ({
@@ -209,9 +213,16 @@ export default function Dashboard({ session }) {
       try {
         const { data, error } = await supabase.from('petro_profiles').select('*').eq('id', session.user.id).maybeSingle();
         if (error) throw error;
-        if (data) setProfile(data);
+        if (data) {
+          setProfile(data);
+          // Carregar meta diária do perfil (com fallback para localStorage)
+          const savedGoal = data.daily_goal || parseInt(localStorage.getItem('petro_daily_goal') || '10');
+          setDailyGoal(savedGoal);
+        }
       } catch (err) {
         console.warn("Profile fetch error or RLS:", err);
+        const savedGoal = parseInt(localStorage.getItem('petro_daily_goal') || '10');
+        setDailyGoal(savedGoal);
       }
     };
 
@@ -343,123 +354,7 @@ export default function Dashboard({ session }) {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-16 relative">
-      {/* Navbar Superior */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm relative">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
-          <div className="flex items-center gap-2 text-green-700 font-black text-xl hover:opacity-80 transition-opacity cursor-pointer">
-            <Target size={24} /> Petrobras <span className="text-slate-800 hidden md:inline">Dashboard</span>
-          </div>
-          <div className="flex items-center gap-4 md:gap-6">
-            <div className="flex items-center gap-2 bg-gradient-to-r from-orange-100 to-orange-50 text-orange-600 px-4 py-1.5 rounded-full font-bold text-sm shadow-sm border border-orange-100">
-              <Flame size={18} className="animate-pulse" fill="currentColor" /> {streak} {t('days_streak', 'dias ofensiva')}
-            </div>
 
-            <LanguageSwitcher />
-            
-            <div className="relative border-l border-slate-200 pl-4 md:pl-6 flex items-center">
-              <button 
-                onClick={() => setMenuAberto(!menuAberto)}
-                className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-800 text-white rounded-full flex items-center justify-center font-bold text-[15px] shadow-md border-2 border-white hover:scale-105 transition-transform"
-              >
-                {userInitial}
-              </button>
-
-              {/* DROPDOWN USER MENU */}
-              {menuAberto && (
-                  <div className="absolute top-14 right-0 w-56 bg-white border border-slate-200 rounded-2xl shadow-2xl py-2 z-50 animate-fade-in-up">
-                      <div className="px-4 py-3 border-b border-slate-100 mb-2">
-                          <p className="text-xs text-slate-400 uppercase font-black tracking-wider">{t('connected_account', 'Conta Conectada')}</p>
-                          <p className="font-bold text-slate-800 truncate">{userEmail}</p>
-                          <div className="mt-2 flex items-center gap-1.5">
-                              <span className={`w-2 h-2 rounded-full ${isPremium ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                              <span className="text-[10px] font-black uppercase tracking-tighter text-slate-500">
-                                  {isPremium ? t('active_subscription') : t('free_plan')}
-                              </span>
-                          </div>
-                      </div>
-                      
-                      {!isPremium && (
-                        <div className="px-2 mb-2">
-                            <button 
-                                onClick={() => handleStripeCheckout('monthly')}
-                                className="w-full bg-gradient-to-r from-green-600 to-yellow-500 text-white p-3 rounded-xl font-black text-xs shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center gap-2"
-                            >
-                                <Zap size={14} className="text-amber-400" fill="currentColor" /> {t('be_premium_now', 'SEJA PREMIUM AGORA')}
-                            </button>
-                        </div>
-                      )}
-                      <button 
-                        onClick={() => navigate('/profile')}
-                        className="w-full text-left px-5 py-2.5 font-bold text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-3 transition-colors"
-                      >
-                          <User size={16} /> {t('menu_profile', 'Meu Perfil')}
-                      </button>
-                      <button 
-                        onClick={() => {
-                            setShowCertificatesModal(true);
-                            setMenuAberto(false);
-                        }}
-                        className="w-full text-left px-5 py-2.5 font-bold text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-3 transition-colors"
-                      >
-                          <Award size={16} /> {t('menu_certificates', 'Meus Certificados')}
-                      </button>
-                      <button 
-                        onClick={() => navigate('/settings')}
-                        className="w-full text-left px-5 py-2.5 font-bold text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-3 transition-colors"
-                      >
-                          <Settings size={16} /> {t('menu_ui_settings', 'Configurações de UI')}
-                      </button>
-                      <div className="my-2 border-t border-slate-100"></div>
-                      <button 
-                        onClick={() => {
-                          setSupportSubject('Suporte');
-                          setShowSupport(true);
-                          setMenuAberto(false);
-                        }}
-                        className="w-full text-left px-5 py-2.5 font-bold text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-3 transition-colors"
-                      >
-                          <Mail size={16} /> {t('menu_contact', 'Fale Conosco')}
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setSupportSubject('Problema');
-                          setShowSupport(true);
-                          setMenuAberto(false);
-                        }}
-                        className="w-full text-left px-5 py-2.5 font-bold text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-3 transition-colors"
-                      >
-                          <AlertCircle size={16} /> {t('menu_report_issue', 'Relatar Problema')}
-                      </button>
-                      <div className="my-2 border-t border-slate-100"></div>
-                      <button 
-                        onClick={handleLogout} 
-                        className="w-full text-left px-5 py-2.5 font-bold text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
-                      >
-                          <LogOut size={16} /> {t('menu_logout', 'Encerrar Sessão')}
-                      </button>
-                      
-                      {isAdmin && (
-                        <>
-                          <div className="my-2 border-t border-slate-100"></div>
-                          <button 
-                            onClick={() => navigate('/admin')} 
-                            className="w-full text-left px-5 py-2.5 font-black text-xs text-green-700 hover:bg-green-50 flex items-center gap-3 transition-colors uppercase tracking-wider"
-                          >
-                              <Shield size={16} /> {t('menu_admin_panel', 'Painel de Gestão')}
-                          </button>
-                        </>
-                      )}
-                  </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* OVERLAY para fechar Click fora do Menu */}
-      {menuAberto && (
-          <div className="fixed inset-0 z-30" onClick={() => setMenuAberto(false)}></div>
-      )}
 
       {/* MODAL DE SELOS GAAMIFICATION */}
       {seloModal && (
@@ -504,7 +399,7 @@ export default function Dashboard({ session }) {
                              <div className="font-bold text-slate-800 mt-1">{h.date}</div>
                          </div>
                          <div className="flex flex-col items-end">
-                             <span className={`font-black text-xl ${h.passed ? 'text-emerald-500' : 'text-red-500'}`}>{h.score * 10}</span>
+                             <span className={`font-black text-xl ${h.passed ? 'text-emerald-500' : 'text-red-500'}`}>{h.score}</span>
                              <span className="text-[10px] text-slate-400 font-bold uppercase">{h.passed ? t('passed_simple') : t('failed_simple')}</span>
                          </div>
                      </div>
@@ -519,6 +414,9 @@ export default function Dashboard({ session }) {
         
         {/* Coluna Central/Esquerda: Banner e Ações */}
         <div className="lg:col-span-8 space-y-8">
+
+          {/* KPI Cards — Métricas Pessoais */}
+          <KPICards history={rawHistory} dailyGoal={dailyGoal} t={t} />
           
           {/* Welcome Banner */}
           <div className="bg-gradient-to-r from-green-700 via-green-800 to-slate-900 rounded-3xl p-8 md:p-10 text-white shadow-xl relative overflow-hidden">
@@ -550,203 +448,32 @@ export default function Dashboard({ session }) {
             <Target className="absolute -bottom-16 -right-16 text-white opacity-10 transform rotate-12" size={300} />
           </div>
 
-          {/* Cards de Simulados */}
-          <div className="mb-8">
-           <h2 className="text-xl font-black text-slate-800 flex items-center gap-3 mb-6">
-              <BookOpen className="text-green-600" size={24} /> {t('simulator_center')}
-           </h2>
-            <div className="grid md:grid-cols-2 gap-5">
-              
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl transition-all group flex flex-col h-full transform hover:-translate-y-1 hover:border-emerald-300">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="font-black text-xl text-slate-800">{t('beginner')}</h3>
-                  <span className="bg-emerald-50 text-emerald-600 text-xs font-black px-3 py-1.5 rounded-lg shadow-sm">120 Q.</span>
-                </div>
-                <p className="text-sm text-slate-500 mb-8 font-medium leading-relaxed flex-1">{t('beginner_desc')}</p>
-                <div className="mt-auto pt-4 border-t border-slate-100">
-                  <button onClick={() => startSimulator('iniciante')} className="w-full bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold py-3.5 rounded-xl transition-colors flex justify-center items-center gap-2">
-                    <Play size={18} /> {t('start_training')}
-                  </button>
-                </div>
-              </div>
+          {/* CTA para a Nova Página de Estudo */}
+          <div className="bg-gradient-to-br from-green-700 to-green-900 rounded-[2.5rem] p-8 md:p-12 text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 group">
+             {/* Efeitos de Fundo */}
+             <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl transform translate-x-1/3 -translate-y-1/3 group-hover:scale-110 transition-transform duration-700"></div>
+             <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-green-400 opacity-20 rounded-full blur-2xl"></div>
 
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl transition-all group flex flex-col h-full relative overflow-hidden transform hover:-translate-y-1 hover:border-amber-300">
-                {!isPremium && <div className="absolute inset-0 bg-slate-50/90 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-center p-4">
-                  <Trophy className="text-amber-500 mb-3" size={36} />
-                  <span className="font-black text-slate-800 text-lg">{t('locked_freemium')}</span>
-                  <span className="text-sm text-slate-500 mt-1">{t('premium_exclusive')}</span>
-                </div>}
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="font-black text-xl text-slate-800">{t('intermediate')}</h3>
-                  <span className="bg-amber-50 text-amber-600 text-xs font-black px-3 py-1.5 rounded-lg shadow-sm">120 Q.</span>
+             <div className="relative z-10 max-w-lg">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 border border-white/20 text-green-100 text-[10px] font-black uppercase tracking-widest mb-6">
+                   <Target size={14} className="text-green-300" /> Nova Área de Estudos
                 </div>
-                <p className="text-sm text-slate-500 mb-8 font-medium leading-relaxed flex-1">{t('intermediate_desc')}</p>
-                <div className="mt-auto pt-4 border-t border-slate-100 relative z-10">
-                  <button onClick={() => startSimulator('intermediario')} className="w-full bg-slate-50 hover:bg-amber-50 text-slate-700 hover:text-amber-700 font-bold py-3.5 rounded-xl transition-colors flex justify-center items-center gap-2">
-                    <Play size={18} /> {t('start_training')}
-                  </button>
-                </div>
-              </div>
+                <h2 className="text-3xl md:text-4xl font-black mb-4 leading-tight">
+                   Pronto para começar seu treinamento?
+                </h2>
+                <p className="text-green-100 font-medium leading-relaxed">
+                   Acesse a nova Central de Estudos. Escolha sua ênfase, selecione entre 4 modos de estudo diferentes (incluindo Flashcards e Revisão) ou foque em tópicos específicos.
+                </p>
+             </div>
 
-              <div className="bg-gradient-to-br from-green-700 to-green-900 text-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-all group flex flex-col h-full relative overflow-hidden transform md:col-span-2">
-                 {!isPremium && <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-center p-4">
-                  <Trophy className="text-amber-400 mb-3" size={40} />
-                  <span className="font-black text-white text-xl">{t('premium_exclusive')}</span>
-                  <span className="text-sm text-green-200 mt-1">{t('premium_required')}</span>
-                </div>}
-                <div className="flex justify-between items-start mb-6">
-                  <div className="max-w-md">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Flame className="text-orange-400" size={20} />
-                        <span className="text-orange-300 font-bold text-xs tracking-wider uppercase">{t('most_chosen')}</span>
-                    </div>
-                    <h3 className="font-black text-2xl text-white">{t('advanced_sim')}</h3>
-                    <p className="text-sm text-green-100 mt-2 font-medium leading-relaxed">{t('advanced_desc')}</p>
-                  </div>
-                  <span className="bg-amber-400 text-amber-900 text-sm font-black px-4 py-2 rounded-xl shadow-md border border-amber-300">120 Q.</span>
-                </div>
-                <div className="mt-auto pt-5 border-t border-green-600 relative z-0">
-                  <button onClick={() => setShowModeSelector(true)} className="w-full bg-white text-green-800 hover:bg-slate-50 hover:scale-[1.01] font-black py-4 rounded-xl transition-transform shadow-xl flex justify-center items-center gap-2 text-lg">
-                    <Play size={20} fill="currentColor" /> {t('start_real_exam')}
-                  </button>
-                </div>
-              </div>
-
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl transition-all group flex flex-col h-full relative overflow-hidden transform md:col-span-2 hover:border-green-300">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="max-w-md">
-                    <h3 className="font-black text-xl text-slate-800 group-hover:text-green-700 transition-colors">{t('study_mode')}</h3>
-                    <p className="text-sm text-slate-500 mt-2 font-medium leading-relaxed">{t('study_desc')}</p>
-                  </div>
-                  <span className="bg-green-50 border border-green-100 text-green-700 text-xs font-black px-3 py-1.5 rounded-lg shadow-sm">250+ Q.</span>
-                </div>
-                <div className="mt-auto pt-5 border-t border-slate-100 relative z-0">
-                  <button onClick={() => startSimulator('geral', 'tutorial')} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-black py-4 rounded-xl transition-all shadow-md flex justify-center items-center gap-2">
-                    <BookOpen size={20} /> {t('start_study_mode')}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* SEÇÃO: Micro Simulados Rápidos */}
-            <div className="mt-12">
-               <h2 className="text-xl font-black text-slate-800 flex items-center gap-3 mb-6">
-                  <Zap className="text-amber-500" size={24} fill="currentColor" /> {t('micro_sim_title', 'Micro Simulados Rápidos')}
-               </h2>
-               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <button 
-                    onClick={() => startSimulator('iniciante', 'micro', 'Língua Portuguesa')}
-                    className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm hover:border-green-500 hover:shadow-md transition-all text-left flex flex-col gap-2 group"
-                  >
-                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t('basics', 'Básicos')}</p>
-                     <p className="text-sm font-black text-slate-800 group-hover:text-green-700 transition-colors">Língua Portuguesa</p>
-                     <div className="flex items-center gap-2 mt-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 rounded text-slate-500">{t('avg_time', '15 min')}</span>
-                     </div>
-                  </button>
-                  <button 
-                    onClick={() => startSimulator('iniciante', 'micro', 'Língua Inglesa')}
-                    className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm hover:border-green-500 hover:shadow-md transition-all text-left flex flex-col gap-2 group"
-                  >
-                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t('basics', 'Básicos')}</p>
-                     <p className="text-sm font-black text-slate-800 group-hover:text-green-700 transition-colors">Língua Inglesa</p>
-                     <div className="flex items-center gap-2 mt-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 rounded text-slate-500">{t('avg_time', '5 min')}</span>
-                     </div>
-                  </button>
-                  
-                  {/* Ciência de Dados com Subníveis (Blocos) */}
-                  <div className="flex flex-col gap-2">
-                     <div className="p-5 bg-green-50 border border-green-200 rounded-2xl shadow-sm flex flex-col gap-2">
-                        <p className="text-xs font-black text-green-600 uppercase tracking-widest">Ciência de Dados</p>
-                        <p className="text-sm font-black text-slate-800">{t('choose_block', 'Escolha o Bloco:')}</p>
-                        <div className="grid grid-cols-1 gap-2 mt-2">
-                           <button 
-                              onClick={() => startSimulator('avancado', 'micro', 'Ciência de Dados', 1)}
-                              className="py-2 px-3 bg-white hover:bg-green-600 hover:text-white border border-green-200 rounded-xl text-[10px] font-black transition-all flex justify-between items-center group/btn"
-                           >
-                              {t('block_i', 'BLOCO I')} <ChevronRight size={14} className="opacity-0 group-hover/btn:opacity-100" />
-                           </button>
-                           <button 
-                              onClick={() => startSimulator('avancado', 'micro', 'Ciência de Dados', 2)}
-                              className="py-2 px-3 bg-white hover:bg-green-600 hover:text-white border border-green-200 rounded-xl text-[10px] font-black transition-all flex justify-between items-center group/btn"
-                           >
-                              {t('block_ii', 'BLOCO II')} <ChevronRight size={14} className="opacity-0 group-hover/btn:opacity-100" />
-                           </button>
-                           <button 
-                              onClick={() => startSimulator('avancado', 'micro', 'Ciência de Dados', 3)}
-                              className="py-2 px-3 bg-white hover:bg-green-600 hover:text-white border border-green-200 rounded-xl text-[10px] font-black transition-all flex justify-between items-center group/btn"
-                           >
-                              {t('block_iii', 'BLOCO III')} <ChevronRight size={14} className="opacity-0 group-hover/btn:opacity-100" />
-                           </button>
-                        </div>
-                     </div>
-                  </div>
-
-                  <button 
-                    onClick={() => startSimulator('avancado', 'micro', 'Analista de Sistemas - Engenharia de Software')}
-                    className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm hover:border-green-500 hover:shadow-md transition-all text-left flex flex-col gap-2 group"
-                  >
-                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t('specifics', 'Específicos')}</p>
-                     <p className="text-sm font-black text-slate-800 group-hover:text-green-700 transition-colors">Engenharia de Software</p>
-                     <div className="flex items-center gap-2 mt-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 rounded text-slate-500">{t('avg_time', '20 min')}</span>
-                     </div>
-                  </button>
-               </div>
-            </div>
+             <button 
+                onClick={() => navigate('/study')}
+                className="relative z-10 shrink-0 bg-white text-green-800 hover:scale-105 transition-all duration-300 font-black px-8 py-5 rounded-2xl shadow-2xl flex items-center gap-3 group/btn"
+             >
+                <BookOpen size={24} className="group-hover/btn:-translate-y-1 transition-transform" /> 
+                <span className="text-lg">Ir para Estudar</span>
+             </button>
           </div>
-
-          {/* NOVO: Modal de Seleção de Modo para Avançado (Etapa 5) */}
-          {showModeSelector && (
-            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex justify-center items-center p-4">
-               <div className="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl animate-fade-in-up">
-                  <div className="p-10 text-center">
-                     <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                        <Trophy size={40} />
-                     </div>
-                     <h2 className="text-3xl font-black text-slate-800 mb-3">{t('choose_strategy')}</h2>
-                     <p className="text-slate-500 font-medium mb-10">{t('strategy_desc')}</p>
-                     
-                     <div className="grid gap-4">
-                        <button 
-                          onClick={() => startSimulator('avancado', 'tutorial')}
-                          className="group flex items-center justify-between p-5 bg-slate-50 hover:bg-green-50 border border-slate-200 hover:border-green-200 rounded-2xl transition-all text-left"
-                        >
-                           <div className="flex items-center gap-4">
-                              <div className="p-3 bg-white rounded-xl text-slate-400 group-hover:text-green-600 shadow-sm transition-colors">
-                                 <BookOpen size={24} />
-                              </div>
-                              <div>
-                                 <p className="font-black text-slate-800">{t('study_mode')}</p>
-                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">{t('study_mode_desc')}</p>
-                              </div>
-                           </div>
-                           <ChevronRight size={20} className="text-slate-300 group-hover:text-green-500" />
-                        </button>
-
-                        <button 
-                          onClick={() => startSimulator('avancado', 'exam')}
-                          className="group flex items-center justify-between p-5 bg-slate-900 hover:bg-black border border-slate-800 rounded-2xl transition-all text-left"
-                        >
-                           <div className="flex items-center gap-4">
-                              <div className="p-3 bg-white/10 rounded-xl text-green-400 shadow-sm">
-                                 <Target size={24} />
-                              </div>
-                              <div>
-                                 <p className="font-black text-white">{t('exam_mode')}</p>
-                                 <p className="text-xs text-green-300 font-bold uppercase tracking-wider">{t('exam_mode_desc')}</p>
-                              </div>
-                           </div>
-                           <ChevronRight size={20} className="text-white/30 group-hover:text-white" />
-                        </button>
-                     </div>
-
-                     <button onClick={() => setShowModeSelector(false)} className="mt-8 text-slate-400 font-black text-xs uppercase tracking-widest hover:text-slate-600 transition-colors">{t('cancel')}</button>
-                  </div>
-               </div>
-            </div>
-          )}
         </div>
 
         {/* Coluna Direita: Microsoft Style Histórico e Gamificação */}
@@ -870,7 +597,7 @@ export default function Dashboard({ session }) {
                                     <p className="font-black text-slate-800 truncate pr-2 max-w-[120px] sm:max-w-[180px]">{user.name}</p>
                                        <div className="flex items-center gap-1 mt-0.5">
                                           <TrendingUp size={10} className="text-slate-400" />
-                                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Best: {user.best_score}%</p>
+                                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Best: {user.best_score / 10}%</p>
                                        </div>
                                 </div>
                             </div>
@@ -924,10 +651,10 @@ export default function Dashboard({ session }) {
                       <div className="flex-1 flex flex-col gap-2 w-full">
                         <div className="flex justify-between items-end">
                             <span className="text-slate-500 text-xs font-bold uppercase tracking-wide">{t('score')}</span>
-                            <span className={`text-xl font-black ${h.passed ? 'text-emerald-600' : 'text-slate-700'}`}>{h.score * 10} / 1000</span>
+                            <span className={`text-xl font-black ${h.passed ? 'text-emerald-600' : 'text-slate-700'}`}>{h.score} / 1000</span>
                         </div>
                         <div className="h-2.5 w-full bg-slate-100 rounded-full relative overflow-hidden shadow-inner">
-                          <div className={`h-full rounded-full transition-all duration-1000 ${h.passed ? 'bg-emerald-500' : 'bg-slate-400'}`} style={{ width: `${h.score}%` }}></div>
+                          <div className={`h-full rounded-full transition-all duration-1000 ${h.passed ? 'bg-emerald-500' : 'bg-slate-400'}`} style={{ width: `${h.score / 10}%` }}></div>
                           <div className="absolute top-0 bottom-0 left-[70%] w-1 bg-white border-l border-red-500/20 z-10" title="Nota de Corte Oficial (700 Pontos)"></div>
                         </div>
                       </div>
@@ -986,7 +713,7 @@ export default function Dashboard({ session }) {
                                         </div>
                                     </div>
                                     <button 
-                                        onClick={() => generateCertificate(profile?.nickname || profile?.full_name || userEmail.split('@')[0], cert.score, cert.date)}
+                                        onClick={() => generateCertificate(profile?.nickname || profile?.full_name || userEmail.split('@')[0], cert.score, cert.date, selectedCargo || 'Analista de Sistemas')}
                                         className="w-full sm:w-auto px-6 py-3 bg-slate-900 hover:bg-blue-600 text-white font-black rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-slate-200"
                                     >
                                         <TrendingUp size={16} /> DOWNLOAD PDF
